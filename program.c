@@ -20,7 +20,7 @@ void forker(int temporary, char* m);
 #define PERMS 0777
 int main (int argc, char* argv[])
 {
-	int temporary = creat("/home/ubuntu/Desktop/tmp", PERMS);
+	int temporary = creat("/tmp/tmp", PERMS);
 
 	if (argc != 4)
 	{
@@ -125,8 +125,8 @@ void forker(int temporary, char* m)
 {
 	char buf[2*bufsiz];
 	close(temporary);
-	temporary = open("/home/ubuntu/Desktop/tmp", O_RDONLY, 0);
-
+	
+	temporary = open("/tmp/tmp", O_RDONLY, 0);
 
 	int n = atoi(m);
 	pid_t pid = fork();
@@ -134,11 +134,12 @@ void forker(int temporary, char* m)
 	for(int i = 0; i < n-1; i++)
 	{
 		if(pid != 0)
-			fork();
+			pid = fork();
 	}
 	
 	if(!pid)
 	{
+		int c = 0;
 		char srs[bufsiz];
 		char dst[bufsiz];
 		while (read(temporary, buf, 2*bufsiz) > 0)
@@ -146,13 +147,17 @@ void forker(int temporary, char* m)
 			strncpy(srs, buf, bufsiz);
 			strncpy(dst, buf+bufsiz, bufsiz);
 			copy(srs, dst);
+			c++;
 		}
+		printf("I`m done, %d, %d files copied\n", getpid(), c);
 	}
 	if(pid)
 	{
-		wait(0);
-		remove("/home/ubuntu/Desktop/tmp");
+		for (int i=0; i<n; i++)
+			wait(0);
+		remove("/tmp/tmp");
+		printf("Parent: I`m done, %d\n", getpid());
 	}	
-	printf("I`m done, %d", getpid());
+	
 }
 
