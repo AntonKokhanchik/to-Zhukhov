@@ -15,22 +15,31 @@ void list_dir(char* srs, char* dst, int temporary);
 void copy(char* srs_name, char* dst_name);
 void _mkdir(const char* dir);
 void forker(int temporary, char* m);
+void signal_handler(int signal);
+
+int c = 0;
+pid_t pid;
 //количество потоков, на которые всё распределится, название папки, которую копируем, и название папки, в которую копируем
 
 #define PERMS 0777
 int main (int argc, char* argv[])
 {
+	signal(/*SIGINT*/SIGUSR1, signal_handler);
 	int temporary = creat("/tmp/tmp", PERMS);
 
-	if (argc != 4)
+	if (argc != 5)
 	{
-		printf("Wrong number of parameters");
+		printf("Wrong number of parameters\n");
 		return 1;
 	}
+	if (strcmp(argv[1], "-n") != 0)
+	{
+		printf("Wrong parameters\n");
+		return 1;
+	}
+	list_dir(argv[3],argv[4], temporary);
 
-	list_dir(argv[2],argv[3], temporary);
-
-	forker(temporary, argv[1]);
+	forker(temporary, argv[2]);
 
 	return 0;
 }
@@ -42,7 +51,7 @@ void list_dir(char* srs, char* dst, int temporary)
 
 	if(!dir)
 	{
-		printf("Directory error");
+		printf("Directory error\n");
 		exit(1);
 	}
 
@@ -83,18 +92,18 @@ void copy(char* srs_name, char* dst_name)
 	char buf[BUFSIZ];
 	if ((srs = open(srs_name, O_RDONLY, 0)) == -1)
 	{
-		printf("open error %s",srs_name);
+		printf("open error %s\n",srs_name);
 		exit(1);
 	}
 	if ((dst = creat(dst_name, PERMS)) == -1)
 	{
-		printf("create error %s",dst_name);
+		printf("create error %s\n",dst_name);
 		exit(1);
 	}
 	while ((n = read(srs, buf, BUFSIZ)) > 0)
 		if (write(dst, buf, n) != n)
 		{
-			printf("write error %s", dst_name);
+			printf("write error %s\n", dst_name);
 			exit(1);
 		}
 	close(srs);
@@ -129,7 +138,7 @@ void forker(int temporary, char* m)
 	temporary = open("/tmp/tmp", O_RDONLY, 0);
 
 	int n = atoi(m);
-	pid_t pid = fork();
+	pid = fork();
 
 	for(int i = 0; i < n-1; i++)
 	{
@@ -139,7 +148,6 @@ void forker(int temporary, char* m)
 	
 	if(!pid)
 	{
-		int c = 0;
 		char srs[bufsiz];
 		char dst[bufsiz];
 		while (read(temporary, buf, 2*bufsiz) > 0)
@@ -153,11 +161,18 @@ void forker(int temporary, char* m)
 	}
 	if(pid)
 	{
+		
 		for (int i=0; i<n; i++)
 			wait(0);
 		remove("/tmp/tmp");
 		printf("Parent: I`m done, %d\n", getpid());
 	}	
 	
+}
+
+void signal_handler(int sig)
+{
+	if(!pid)
+		printf("%d: %d files copied\n",getpid(), c);
 }
 
